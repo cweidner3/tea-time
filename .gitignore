@@ -1,3 +1,6 @@
 *~
 *.swp
 
+# C / CMake Build objects
+build/
+
