@@ -4,3 +4,4 @@
 # C / CMake Build objects
 build/
 
+*.tar.gz
