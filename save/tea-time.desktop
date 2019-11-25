@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=Tea-Time
+Comment=Simple timer for tea sessions
+Keywords=Tea;Timer
+Exec=/usr/bin/tea-time
+Icon=tea-time
+Terminal=false
+Type=Application
+Categories=Utilities;
