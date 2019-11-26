@@ -48,6 +48,12 @@ MainWidget::MainWidget()
     QObject::connect(b_reset, &QPushButton::clicked,
                      this, &MainWidget::resetClicked);
 
+    /*--- Save Color Info For Later ---*/
+
+    this->idle_button_color = this->b_start_stop->palette()
+            .color(QPalette::Window);
+    this->active_button_color = QColor(Qt::red);
+
     /*--- Timer ---*/
 
     this->timer.setSingleShot(true);
@@ -126,16 +132,6 @@ void MainWidget::setTimes(int start, int increment)
  */
 
 /*
- * Wrapper to set the timer with the value stored in the current infusion time
- * box.
- */
-void MainWidget::setTimerValue()
-{
-    int time_ms = this->te_current_time_->value() * 1000;
-    this->timer.setInterval(time_ms);
-}
-
-/*
  * Wrapper to determine if the UI is in "timer is running" mode.
  */
 bool MainWidget::isTimerRunning()
@@ -158,6 +154,16 @@ bool MainWidget::isEditing()
 }
 
 /*
+ * Wrapper to set the timer with the value stored in the current infusion time
+ * box.
+ */
+void MainWidget::setTimerValue()
+{
+    int time_ms = this->te_current_time_->value() * 1000;
+    this->timer.setInterval(time_ms);
+}
+
+/*
  * Wrapper to allow or disallow editing of the inputs/outputs.
  */
 void MainWidget::setReadOnly(bool readOnly)
@@ -166,6 +172,36 @@ void MainWidget::setReadOnly(bool readOnly)
     this->te_increment_time_->setReadOnly(readOnly);
     this->te_current_time_->setReadOnly(readOnly);
     this->te_count_->setReadOnly(readOnly);
+}
+
+/*
+ * Wrapper to setting the start stop button to the correct state.
+ */
+void MainWidget::setStartStopButton(bool started)
+{
+    if (started) {
+        this->b_start_stop->setText(this->ss_running_text);
+        this->b_start_stop->setPalette(QPalette(this->active_button_color));
+    }
+    else {
+        this->b_start_stop->setText(this->ss_idle_text);
+        this->b_start_stop->setPalette(QPalette(this->idle_button_color));
+    }
+}
+
+/*
+ * Wrapper to set the edit button to the correct state.
+ */
+void MainWidget::setEditButton(bool editing)
+{
+    if (editing) {
+        this->b_edit->setText(this->edit_editing_text);
+        this->b_edit->setPalette(QPalette(this->active_button_color));
+    }
+    else {
+        this->b_edit->setText(this->edit_idle_text);
+        this->b_edit->setPalette(QPalette(this->idle_button_color));
+    }
 }
 
 /*
@@ -181,12 +217,12 @@ void MainWidget::startStopClicked()
     if (this->isTimerRunning()) {
         qDebug() << "Stopping timer...";
         this->timer.stop();
-        this->b_start_stop->setText(this->ss_idle_text);
+        this->setStartStopButton(false);
     }
     else {
         qDebug() << "Starting timer...";
         this->setTimerValue();
-        this->b_start_stop->setText(this->ss_running_text);
+        this->setStartStopButton(true);
         this->timer.start();
     }
 }
@@ -199,11 +235,11 @@ void MainWidget::editClicked()
     qDebug() << "Edit Clicked";
     if (this->isEditing()) {
         this->setReadOnly(true);
-        this->b_edit->setText(this->edit_idle_text);
+        this->setEditButton(false);
     }
     else {
         this->setReadOnly(false);
-        this->b_edit->setText(this->edit_editing_text);
+        this->setEditButton(true);
     }
 }
 
@@ -218,7 +254,7 @@ void MainWidget::resetClicked()
     qDebug() << "Reset Clicked";
     if (this->isTimerRunning()) {
         this->timer.stop();
-        this->b_start_stop->setText(this->ss_idle_text);
+        this->setStartStopButton(false);
     }
     this->te_current_time_->setValue(this->te_start_time_->value());
     this->te_count_->setValue(0);

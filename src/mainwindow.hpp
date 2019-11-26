@@ -6,6 +6,7 @@
 #include <QSpinBox>
 #include <QPushButton>
 #include <QTimer>
+#include <QColor>
 
 /*
  * Note to Self:
@@ -21,10 +22,15 @@ class MainWidget: public QWidget {
         void setTimes(int, int);
 
     private:
-        void setTimerValue();
+        /* Status Wrappers */
         bool isTimerRunning();
         bool isEditing();
+
+        /* Setter Wrappers */
+        void setTimerValue();
         void setReadOnly(bool);
+        void setStartStopButton(bool);
+        void setEditButton(bool);
 
     private slots:
         void startStopClicked();
@@ -54,6 +60,9 @@ class MainWidget: public QWidget {
 
         QPushButton *b_start_stop;
         QPushButton *b_edit;
+
+        QColor idle_button_color;
+        QColor active_button_color;
 
         QTimer timer;
 };
