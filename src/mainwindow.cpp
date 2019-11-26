@@ -4,6 +4,12 @@
 
 #include <sstream>
 #include <stdexcept>
+#include <filesystem>
+
+/*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
+
+const BrewItem default_item;
 
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
@@ -24,6 +30,9 @@ static inline QSpinBox * create_new_spinbox(int min, int max, int start) {
 
 MainWidget::MainWidget()
 {
+    this->te_name_ = new QLineEdit();
+    this->te_name_->setReadOnly(true);
+
     /*--- Info Boxes ---*/
 
     this->te_start_time_ = create_new_spinbox(
@@ -66,14 +75,21 @@ MainWidget::MainWidget()
     QVBoxLayout *outer_lo = new QVBoxLayout(this);
     QGroupBox *gbox = nullptr;
     QHBoxLayout *hlo = nullptr;
+    QVBoxLayout *vlo = nullptr;
 
     gbox = new QGroupBox("Setup");
+    vlo = new QVBoxLayout();
+    hlo = new QHBoxLayout();
+    hlo->addWidget(new QLabel("Brew:"));
+    hlo->addWidget(this->te_name_);
+    vlo->addLayout(hlo);
     hlo = new QHBoxLayout();
     hlo->addWidget(new QLabel("Start Time (s):"));
     hlo->addWidget(this->te_start_time_);
     hlo->addWidget(new QLabel("Increment (s):"));
     hlo->addWidget(this->te_increment_time_);
-    gbox->setLayout(hlo);
+    vlo->addLayout(hlo);
+    gbox->setLayout(vlo);
     outer_lo->addWidget(gbox);
 
     gbox = new QGroupBox("Next Timer");
@@ -128,6 +144,16 @@ void MainWidget::setTimes(int start, int increment)
 }
 
 /*
+ * Wrapper to set the setup info by passin in a brewitem object.
+ */
+void MainWidget::setWithBrewItem(const BrewItem &item)
+{
+    this->te_name_->setText(item.getName().data());
+    this->te_start_time_->setValue(item.getStart());
+    this->te_increment_time_->setValue(item.getInterval());
+}
+
+/*
  * Private Methods
  */
 
@@ -168,6 +194,7 @@ void MainWidget::setTimerValue()
  */
 void MainWidget::setReadOnly(bool readOnly)
 {
+    this->te_name_->setReadOnly(readOnly);
     this->te_start_time_->setReadOnly(readOnly);
     this->te_increment_time_->setReadOnly(readOnly);
     this->te_current_time_->setReadOnly(readOnly);
@@ -281,6 +308,8 @@ void MainWidget::timerDone()
 MainWindow::MainWindow()
 {
     this->setCentralWidget(&this->main_widget_);
+
+    this->main_widget_.setWithBrewItem(default_item);
 
     /* Actions */
 

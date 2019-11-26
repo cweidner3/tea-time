@@ -1,8 +1,11 @@
 #ifndef __MAINWINDOW_HPP__
 #define __MAINWINDOW_HPP__
 
+#include "BrewDatabase.h"
+
 #include <QMainWindow>
 #include <QWidget>
+#include <QLineEdit>
 #include <QSpinBox>
 #include <QPushButton>
 #include <QTimer>
@@ -20,6 +23,7 @@ class MainWidget: public QWidget {
     public:
         bool timesWithinRange(int, int);
         void setTimes(int, int);
+        void setWithBrewItem(const BrewItem &);
 
     private:
         /* Status Wrappers */
@@ -53,6 +57,7 @@ class MainWidget: public QWidget {
         const char * const edit_idle_text = "Edit";
         const char * const edit_editing_text = "Done";
 
+        QLineEdit *te_name_;
         QSpinBox *te_start_time_;
         QSpinBox *te_increment_time_;
         QSpinBox *te_current_time_;
