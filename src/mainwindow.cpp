@@ -281,4 +281,42 @@ void MainWidget::timerDone()
 MainWindow::MainWindow()
 {
     this->setCentralWidget(&this->main_widget_);
+
+    /* Actions */
+
+    QAction *act_quit = new QAction("&Quit", this);
+    QObject::connect(act_quit, &QAction::triggered,
+                     this, &QApplication::quit);
+
+    QAction *act_about = new QAction("&About", this);
+    QObject::connect(act_about, &QAction::triggered,
+                     this, &MainWindow::showAbout);
+
+    QAction *act_about_qt = new QAction("About &Qt", this);
+    QObject::connect(act_about_qt, &QAction::triggered,
+                     this, &QApplication::aboutQt);
+
+    /* Menu Setup */
+
+    QMenu *file_menu = this->menuBar()->addMenu("&File");
+    file_menu->addAction(act_quit);
+
+    QMenu *help_menu = this->menuBar()->addMenu("&Help");
+    help_menu->addAction(act_about);
+    help_menu->addAction(act_about_qt);
+}
+
+/*
+ * Public Methods
+ */
+
+/*
+ * Display this program's About text.
+ */
+void MainWindow::showAbout()
+{
+    qDebug() << "About action pressed";
+    QMessageBox::about(this, "About Tea-Time",
+             "Simple application to help manage the timing of tea infusions "
+             "and automatically increments the time of each infusion.");
 }

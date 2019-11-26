@@ -71,6 +71,9 @@ class MainWindow: public QMainWindow {
     public:
         MainWindow();
 
+    public:
+        void showAbout();
+
     private:
         MainWidget main_widget_;
 };
