@@ -53,4 +53,38 @@ foreach(lib ${QTLIBS})
     target_link_libraries(${PROJNAME} Qt5::${lib})
 endforeach()
 
+#-------------------------------------------------------------------------------
+
+include(GNUInstallDirs)
+
+set(ICON_DIRS_TBD
+    1024x1024
+    512x512
+    384x384
+    32x32
+    22x22
+    20x20
+    )
+set(ICON_DIRS
+    256x256
+    192x192
+    128x128
+    96x96
+    72x72
+    64x64
+    48x48
+    40x40
+    36x36
+    24x24
+    16x16
+    )
+
+string(REGEX REPLACE "([^;]+)" "icon-dev/\\1" ICON_PATHS "${ICON_DIRS}")
+
+install(TARGETS ${PROJNAME} RUNTIME
+    DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES save/tea-time.desktop
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(DIRECTORY ${ICON_PATHS}
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor)
 
