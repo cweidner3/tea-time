@@ -8,10 +8,14 @@
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
 
+/*
+ * Wrapper to create a spinbox with the supplied values.
+ */
 static inline QSpinBox * create_new_spinbox(int min, int max, int start) {
     QSpinBox *sp_obj = new QSpinBox();
     sp_obj->setRange(min, max);
     sp_obj->setValue(start);
+    sp_obj->setReadOnly(true);
     return sp_obj;
 }
 
@@ -28,16 +32,17 @@ MainWidget::MainWidget()
             this->min_inc, this->max_inc, this->def_inc);
     this->te_current_time_ = create_new_spinbox(
             this->min_time, this->max_time, this->def_time);
+    this->te_count_ = create_new_spinbox(0, 1000, 0);
 
     /*--- Buttons ---*/
 
-    QPushButton *b_start = new QPushButton("Start");
-    QObject::connect(b_start, &QPushButton::clicked,
-                     this, &MainWidget::startClicked);
+    this->b_start_stop = new QPushButton(this->ss_idle_text);
+    QObject::connect(this->b_start_stop, &QPushButton::clicked,
+                     this, &MainWidget::startStopClicked);
 
-    QPushButton *b_stop = new QPushButton("Stop");
-    QObject::connect(b_stop, &QPushButton::clicked,
-                     this, &MainWidget::stopClicked);
+    this->b_edit = new QPushButton(this->edit_idle_text);
+    QObject::connect(this->b_edit, &QPushButton::clicked,
+                     this, &MainWidget::editClicked);
 
     QPushButton *b_reset = new QPushButton("Reset");
     QObject::connect(b_reset, &QPushButton::clicked,
@@ -69,16 +74,25 @@ MainWidget::MainWidget()
     hlo = new QHBoxLayout();
     hlo->addWidget(new QLabel("Next Timer Time (s):"));
     hlo->addWidget(this->te_current_time_);
+    hlo->addWidget(new QLabel("Infusion:"));
+    hlo->addWidget(this->te_count_);
     gbox->setLayout(hlo);
     outer_lo->addWidget(gbox);
 
     QHBoxLayout *buttons_lo = new QHBoxLayout();
-    buttons_lo->addWidget(b_start);
-    buttons_lo->addWidget(b_stop);
+    buttons_lo->addWidget(this->b_start_stop);
+    buttons_lo->addWidget(this->b_edit);
     buttons_lo->addWidget(b_reset);
     outer_lo->addLayout(buttons_lo);
 }
 
+/*
+ * Public Methods
+ */
+
+/*
+ * Determine if the values supplied are within range.
+ */
 bool MainWidget::timesWithinRange(int start, int increment)
 {
     if ((this->min_time > start) || (start > this->max_time)) {
@@ -90,6 +104,9 @@ bool MainWidget::timesWithinRange(int start, int increment)
     return true;
 }
 
+/*
+ * Set the setup section of the UI with these values.
+ */
 void MainWidget::setTimes(int start, int increment)
 {
     if(!this->timesWithinRange(start, increment)) {
@@ -104,38 +121,119 @@ void MainWidget::setTimes(int start, int increment)
     this->te_increment_time_->setValue(increment);
 }
 
-void MainWidget::startClicked()
-{
-    qDebug() << "Start Clicked";
-    this->setTimerValue();
-    this->timer.start();
-}
+/*
+ * Private Methods
+ */
 
-void MainWidget::stopClicked()
-{
-    qDebug() << "Stop Clicked";
-    this->timer.stop();
-}
-
-void MainWidget::resetClicked()
-{
-    qDebug() << "Reset Clicked";
-    this->stopClicked();
-    this->te_current_time_->setValue(this->te_start_time_->value());
-}
-
+/*
+ * Wrapper to set the timer with the value stored in the current infusion time
+ * box.
+ */
 void MainWidget::setTimerValue()
 {
     int time_ms = this->te_current_time_->value() * 1000;
     this->timer.setInterval(time_ms);
 }
 
+/*
+ * Wrapper to determine if the UI is in "timer is running" mode.
+ */
+bool MainWidget::isTimerRunning()
+{
+    if (this->b_start_stop->text() == this->ss_running_text) {
+        return true;
+    }
+    return false;
+}
+
+/*
+ * Wrapper to determine if the UI is in edit mode.
+ */
+bool MainWidget::isEditing()
+{
+    if (this->b_edit->text() == this->edit_editing_text) {
+        return true;
+    }
+    return false;
+}
+
+/*
+ * Wrapper to allow or disallow editing of the inputs/outputs.
+ */
+void MainWidget::setReadOnly(bool readOnly)
+{
+    this->te_start_time_->setReadOnly(readOnly);
+    this->te_increment_time_->setReadOnly(readOnly);
+    this->te_current_time_->setReadOnly(readOnly);
+    this->te_count_->setReadOnly(readOnly);
+}
+
+/*
+ * Private Slots
+ */
+
+/*
+ * What happens when the start/stop button is pressed.
+ */
+void MainWidget::startStopClicked()
+{
+    qDebug() << "Start/Stop Clicked";
+    if (this->isTimerRunning()) {
+        qDebug() << "Stopping timer...";
+        this->timer.stop();
+        this->b_start_stop->setText(this->ss_idle_text);
+    }
+    else {
+        qDebug() << "Starting timer...";
+        this->setTimerValue();
+        this->b_start_stop->setText(this->ss_running_text);
+        this->timer.start();
+    }
+}
+
+/*
+ * What happens when the edit button is clicked.
+ */
+void MainWidget::editClicked()
+{
+    qDebug() << "Edit Clicked";
+    if (this->isEditing()) {
+        this->setReadOnly(true);
+        this->b_edit->setText(this->edit_idle_text);
+    }
+    else {
+        this->setReadOnly(false);
+        this->b_edit->setText(this->edit_editing_text);
+    }
+}
+
+/*
+ * What happens when the reset button is clicked.
+ *
+ * This will stop the timer, reset the start/stop button, and reset "Next Timer"
+ * elements to the starting position.
+ */
+void MainWidget::resetClicked()
+{
+    qDebug() << "Reset Clicked";
+    if (this->isTimerRunning()) {
+        this->timer.stop();
+        this->b_start_stop->setText(this->ss_idle_text);
+    }
+    this->te_current_time_->setValue(this->te_start_time_->value());
+    this->te_count_->setValue(0);
+}
+
 void MainWidget::timerDone()
 {
     qDebug() << "Timer finished";
     int new_time = this->te_current_time_->value();
+    int new_inf = this->te_count_->value();
     new_time += this->te_increment_time_->value();
+    new_inf += 1;
     this->te_current_time_->setValue(new_time);
+    this->te_count_->setValue(new_inf);
+    this->b_start_stop->setText(this->ss_idle_text);
     QMessageBox dialog;
     dialog.setText("Tea is Done!");
     dialog.exec();

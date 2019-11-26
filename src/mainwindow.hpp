@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QWidget>
 #include <QSpinBox>
+#include <QPushButton>
 #include <QTimer>
 
 /*
@@ -21,10 +22,13 @@ class MainWidget: public QWidget {
 
     private:
         void setTimerValue();
+        bool isTimerRunning();
+        bool isEditing();
+        void setReadOnly(bool);
 
     private slots:
-        void startClicked();
-        void stopClicked();
+        void startStopClicked();
+        void editClicked();
         void resetClicked();
 
         void timerDone();
@@ -37,9 +41,19 @@ class MainWidget: public QWidget {
         const int max_inc = 120;
         const int def_inc = 5;
 
+        const char * const ss_idle_text = "Start";
+        const char * const ss_running_text = "Stop";
+
+        const char * const edit_idle_text = "Edit";
+        const char * const edit_editing_text = "Done";
+
         QSpinBox *te_start_time_;
         QSpinBox *te_increment_time_;
         QSpinBox *te_current_time_;
+        QSpinBox *te_count_;
+
+        QPushButton *b_start_stop;
+        QPushButton *b_edit;
 
         QTimer timer;
 };
