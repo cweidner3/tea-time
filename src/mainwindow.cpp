@@ -290,13 +290,16 @@ void MainWidget::resetClicked()
 void MainWidget::timerDone()
 {
     qDebug() << "Timer finished";
+    /* Update text boxes with new values */
     int new_time = this->te_current_time_->value();
     int new_inf = this->te_count_->value();
     new_time += this->te_increment_time_->value();
     new_inf += 1;
     this->te_current_time_->setValue(new_time);
     this->te_count_->setValue(new_inf);
-    this->b_start_stop->setText(this->ss_idle_text);
+    /* Reset the start button */
+    this->setStartStopButton(false);
+    /* Show Notification */
     QMessageBox dialog;
     dialog.setText("Tea is Done!");
     dialog.exec();
