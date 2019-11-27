@@ -3,10 +3,8 @@ cmake_minimum_required(VERSION 3.13)
 set(PROJNAME tea-time)
 project(${PROJNAME} C CXX)
 
-SET(CMAKE_C_COMPILER gcc)
-SET(CMAKE_CXX_COMPILER g++)
-
 #-------------------------------------------------------------------------------
+# Qt Libraries
 
 # Find includes in corresponding build directories
 #set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -19,11 +17,17 @@ set(QTLIBS
     Core
     Gui
     Widgets
+    Sql
 )
 
 foreach(lib ${QTLIBS})
     find_package(Qt5${lib})
 endforeach()
+
+#-------------------------------------------------------------------------------
+# Other Libraries
+
+find_package(fmt REQUIRED)
 
 #-------------------------------------------------------------------------------
 
@@ -32,26 +36,73 @@ add_definitions(-Og -g)
 
 #-------------------------------------------------------------------------------
 
+# All files here will be packaged into a convenience library which can also
+# be used for the unit tests.
 file(GLOB_RECURSE SRCFILES
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_SOURCE_DIR}/src/*.hpp"
 )
+# Remove the main file from the list
+list(REMOVE_ITEM SRCFILES "${CMAKE_SOURCE_DIR}/src/main.cpp")
 
 #-------------------------------------------------------------------------------
 
-# Tell CMake to create the helloworld executable
-add_executable(${PROJNAME} ${SRCFILES})
-
+# Convienience library
+add_library(mainlib ${SRCFILES})
+# Main executable that defines the project
+add_executable(${PROJNAME} "${CMAKE_SOURCE_DIR}/src/main.cpp")
+# Include directories for the project
 target_include_directories(${PROJNAME}
     PRIVATE "${CMAKE_SOURCE_DIR}/src"
 )
 
 #-------------------------------------------------------------------------------
 
-# Use the Widgets module from Qt 5
+# Linking the libraries to the targets
+target_link_libraries(${PROJNAME} mainlib)
+target_link_libraries(mainlib fmt::fmt-header-only)
+# Link each of the QT libraries
 foreach(lib ${QTLIBS})
     target_link_libraries(${PROJNAME} Qt5::${lib})
+    target_link_libraries(mainlib Qt5::${lib})
 endforeach()
+
+#-------------------------------------------------------------------------------
+
+# Requried for unit testing
+enable_testing()
+
+# Add boost to the setup
+find_package(Boost COMPONENTS system filesystem unit_test_framework REQUIRED)
+add_definitions(-DBOOST_TEST_DYN_LINK)
+# Find all tests
+file(GLOB TEST_SRCS "${CMAKE_SOURCE_DIR}/test/*.cpp")
+
+foreach(test_src ${TEST_SRCS})
+    # Extract the filename without an extension
+    get_filename_component(test_name ${test_src} NAME_WE)
+    # Each test will have a new executable
+    add_executable(${test_name} ${test_src})
+    target_include_directories(${test_name}
+        PRIVATE "${CMAKE_SOURCE_DIR}/src"
+        SYSTEM "${Boost_INCLUDE_DIRS}"
+    )
+    target_link_libraries(${test_name}
+        mainlib
+        ${Boost_FILESYSTEM_LIBRARY}
+        ${Boost_SYSTEM_LIBRARY}
+        ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+    )
+    # Set destination location for binaries.
+    set_target_properties(${test_name} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY  ${CMAKE_BINARY_DIR}/testBin
+    )
+    # Add tests to the test stack
+    add_test(NAME ${test_name}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/testBin
+        COMMAND ${CMAKE_BINARY_DIR}/testBin/${test_name}
+    )
+endforeach(test_src)
 
 #-------------------------------------------------------------------------------
 

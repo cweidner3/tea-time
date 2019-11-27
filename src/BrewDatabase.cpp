@@ -4,83 +4,38 @@
 
 #include "BrewDatabase.h"
 
+#include "CustomFormats.h"
+
 #include <stdexcept>
+#include <cstdlib>
 
-BrewItem::BrewItem()
-    : name("Gong-Fu Black Tea"), start(15), interval(5), temp(90),
-      max_infusions(8)
-{
-}
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlTableModel>
 
-BrewItem::BrewItem(std::string_view &name)
-    : name(name), start(15), interval(5), temp(90), max_infusions(8)
-{
-}
+#include <QtCore>
+#include <QtSql/QtSql>
 
-BrewItem::BrewItem(std::string_view &name, int start, int interval, int temp,
-        int max_infusions)
-    : name(name), start(start), interval(interval), temp(temp),
-      max_infusions(max_infusions)
-{
-}
+namespace fs = std::filesystem;
+static fs::path _database_file = std::getenv("HOME")
+    / fs::path(".cache/tea-time/brews.db");
+static const QString _driver("QSQLITE");
 
-BrewItem::~BrewItem()
-{
-}
+// @formatter:off
+static const QList<BrewItem> _default_brews = {
+    BrewItem("Default Pu-Erh", 15, 5, 95, 15),
+    BrewItem("Default Black", 15, 5, 90, 8),
+    BrewItem("Default Oolong", 20, 5, 95, 9),
+    BrewItem("Default Green", 15, 3, 80, 5),
+    BrewItem("Default White", 45, 10, 90, 5),
+};
+// @formatter:on
+const std::string _table_name_brews = "Brews";
+const std::string _table_name_cache = "Cache";
+const std::string _table_name_types = "Types";
 
-/*
- * Public Methods
- */
-
-void BrewItem::setName(std::string_view &name)
-{
-    this->name = name;
-}
-
-std::string_view BrewItem::getName() const
-{
-    return std::string_view(this->name);
-}
-
-void BrewItem::setStart(int start)
-{
-    this->start = start;
-}
-
-int BrewItem::getStart() const
-{
-    return this->start;
-}
-
-void BrewItem::setInterval(int interval)
-{
-    this->interval = interval;
-}
-
-int BrewItem::getInterval() const
-{
-    return this->interval;
-}
-
-void BrewItem::setTemp(int temp)
-{
-    this->temp = temp;
-}
-
-int BrewItem::getTemp() const
-{
-    return this->temp;
-}
-
-void BrewItem::setMaxInfusions(int max_infusions)
-{
-    this->max_infusions = max_infusions;
-}
-
-int BrewItem::getMaxInfusions() const
-{
-    return this->max_infusions;
-}
+static const QString _connection_name = "BDCONN";
+static bool _connection_open = false;
 
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
@@ -93,8 +48,243 @@ BrewDatabase::~BrewDatabase()
 {
 }
 
-void BrewDatabase::loadFromFile(const std::filesystem::path &file_to_load)
+BrewDatabase::BrewDatabase(BrewDatabase &&rhs)
 {
-    throw std::runtime_error("Not method implemented");
+    this->useTransactions = rhs.useTransactions;
 }
 
+BrewDatabase& BrewDatabase::operator=(BrewDatabase &&rhs)
+{
+    this->useTransactions = rhs.useTransactions;
+
+    rhs.useTransactions = false;
+
+    return *this;
+}
+
+/*
+ * Private Methods
+ */
+
+/*
+ * Wrappers for making sure data gets saved to disk.
+ */
+void BrewDatabase::_maybeStartTransaction()
+{
+    if (this->useTransactions) {
+        QSqlDatabase::database().transaction();
+    }
+}
+
+/*
+ * Wrappers for making sure data gets saved to disk.
+ */
+void BrewDatabase::_maybeStopTransaction()
+{
+    if (this->useTransactions) {
+        QSqlDatabase::database().commit();
+    }
+}
+
+/*
+ * Wrapper for adding a single item to the brews table.
+ */
+void BrewDatabase::_addItemToTable(QSqlQuery &query, BrewItem &item)
+{
+    QString fields = item.getTableFields();
+    QString data = item.getTableRow();
+    QString query_str = fmt::format("INSERT INTO {} ({}) VALUES ({});",
+            _table_name_brews, fields, data).data();
+    if (!query.exec(query_str)) {
+        throw std::runtime_error(fmt::format("Failed to execute: {}",
+                query_str));
+    }
+}
+
+/*
+ * Create the tables needed.
+ */
+void BrewDatabase::_createTables()
+{
+    QSqlDatabase database = QSqlDatabase::database(_connection_name);
+    QSqlQuery query(database);
+
+    QString fields;
+    QString query_str;
+
+    this->_maybeStartTransaction();
+    /* Create the brews database table */
+    fields = BrewItem::getCreationString();
+    query_str = fmt::format("CREATE TABLE {} ({})", _table_name_brews,
+            fields).data();
+    if (query.exec(query_str) == false) {
+        throw std::runtime_error(fmt::format("Failed to execute: {}: {}",
+                query_str, query.lastError().text()));
+    }
+    /* Create the cache table that holds onto the last used item */
+    fields = BrewItem::getCreationString();
+    query_str = fmt::format("CREATE TABLE {} ({})", _table_name_cache,
+            fields).data();
+    if (query.exec(query_str) == false) {
+        throw std::runtime_error(fmt::format("Failed to execute: {}: {}",
+                query_str, query.lastError().text()));
+    }
+    this->_maybeStopTransaction();
+}
+
+/*
+ * Public Methods
+ */
+
+void BrewDatabase::openDatabase()
+{
+    if (_connection_open) {
+        // Already Open
+        return;
+    }
+
+    QString db_str(_database_file.string().data());
+    bool db_existed = fs::exists(_database_file);
+
+    /* Check the parent directory to the database file and make sure it exists
+     * before trying to open it. */
+    if (!fs::exists(_database_file.parent_path())) {
+        fs::create_directories(_database_file.parent_path());
+    }
+    else if (!fs::is_directory(_database_file.parent_path())) {
+        std::string msg = fmt::format(
+                "The path '{}' exists and is not a directory",
+                _database_file.parent_path().string());
+        throw std::runtime_error(msg);
+    }
+
+    if (!QSqlDatabase::isDriverAvailable(_driver)) {
+        throw std::runtime_error("Unable to load database driver");
+    }
+
+    QSqlDatabase database = QSqlDatabase::addDatabase(_driver, _connection_name);
+    database.setDatabaseName(db_str);
+    if (database.open() == false) {
+        throw std::runtime_error("Failed to open cache database");
+    }
+    _connection_open = true;
+
+    this->useTransactions = database.driver()->hasFeature(
+            QSqlDriver::Transactions);
+
+    if (db_existed == false) {
+        this->_createTables();
+    }
+}
+
+void BrewDatabase::closeDatabase()
+{
+    if (_connection_open == false) {
+        return;
+    }
+    QSqlDatabase database = QSqlDatabase::database(_connection_name);
+    database.close();
+    QSqlDatabase::removeDatabase(_connection_name);
+    _connection_open = false;
+}
+
+/*
+ * Add a single item to the brews table.
+ */
+void BrewDatabase::addBrewToTable(BrewItem item)
+{
+    this->openDatabase();
+    this->_maybeStartTransaction();
+    QSqlDatabase database = QSqlDatabase::database(_connection_name);
+    QSqlQuery query(database);
+    this->_addItemToTable(query, item);
+    this->_maybeStopTransaction();
+}
+
+/*
+ * Add multiple items to the brews table.
+ */
+void BrewDatabase::addBrewsToTable(QList<BrewItem> list)
+{
+    if (list.empty()) {
+        return;
+    }
+    this->openDatabase();
+    this->_maybeStartTransaction();
+    QSqlDatabase database = QSqlDatabase::database(_connection_name);
+    QSqlQuery query(database);
+    for (BrewItem item : list) {
+        this->_addItemToTable(query, item);
+    }
+    this->_maybeStopTransaction();
+}
+
+/*
+ * Remove all rows from the brews table.
+ */
+void BrewDatabase::clearBrewsTable()
+{
+    this->openDatabase();
+    this->_maybeStartTransaction();
+    QSqlDatabase database = QSqlDatabase::database(_connection_name);
+    QSqlQuery query(database);
+    QString query_str = fmt::format(
+            "DELETE FROM {}",
+            _table_name_brews).data();
+    if (!query.exec(query_str)) {
+        throw std::runtime_error(fmt::format("Failed to execute: {}: {}",
+                query_str, query.lastError().text()));
+    }
+    this->_maybeStopTransaction();
+}
+
+/*
+ * Return the number of entries in the brews table.
+ */
+int BrewDatabase::getBrewsCount()
+{
+    QSqlDatabase database = QSqlDatabase::database(_connection_name);
+    QSqlQuery query(database);
+    QString query_str = fmt::format(
+            "SELECT COUNT(name) FROM {};",
+            _table_name_brews).data();
+    if (!query.exec(query_str)) {
+        throw std::runtime_error(fmt::format("Failed to execute: {}: {}",
+                query_str, query.lastError().text()));
+    }
+    query.next();
+    return query.value(0).toInt();
+}
+
+QList<BrewItem> BrewDatabase::getBrewsFromTable()
+{
+    QList<BrewItem> items;
+
+    QSqlDatabase database = QSqlDatabase::database(_connection_name);
+    QSqlQuery query(database);
+    QString query_str = fmt::format(
+            "SELECT * FROM {};",
+            _table_name_brews).data();
+    if (!query.exec(query_str)) {
+        throw std::runtime_error(fmt::format("Failed to execute: {}: {}",
+                query_str, query.lastError().text()));
+    }
+    while(query.next()) {
+        BrewItem new_item;
+        new_item.setRecord(query.record());
+        items.append(new_item);
+    }
+    return items;
+}
+
+/*
+ * Static Methods
+ */
+
+/*
+ * Set the database file path,
+ */
+void BrewDatabase::setDatabasePath(const std::filesystem::path &db_file)
+{
+    _database_file = db_file;
+}

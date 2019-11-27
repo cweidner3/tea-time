@@ -1,5 +1,7 @@
 #include "mainwindow.hpp"
 
+#include "LoadBrewDialog.h"
+
 #include <QtWidgets>
 
 #include <sstream>
@@ -9,7 +11,7 @@
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
 
-const BrewItem default_item;
+const BrewItem default_item = BrewItem::defaultBrewItem();
 
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
@@ -17,7 +19,8 @@ const BrewItem default_item;
 /*
  * Wrapper to create a spinbox with the supplied values.
  */
-static inline QSpinBox * create_new_spinbox(int min, int max, int start) {
+static inline QSpinBox* create_new_spinbox(int min, int max, int start)
+{
     QSpinBox *sp_obj = new QSpinBox();
     sp_obj->setRange(min, max);
     sp_obj->setValue(start);
@@ -35,40 +38,40 @@ MainWidget::MainWidget()
 
     /*--- Info Boxes ---*/
 
-    this->te_start_time_ = create_new_spinbox(
-            this->min_time, this->max_time, this->def_time);
-    this->te_increment_time_ = create_new_spinbox(
-            this->min_inc, this->max_inc, this->def_inc);
-    this->te_current_time_ = create_new_spinbox(
-            this->min_time, this->max_time, this->def_time);
+    this->te_start_time_ = create_new_spinbox(this->min_time, this->max_time,
+            this->def_time);
+    this->te_increment_time_ = create_new_spinbox(this->min_inc, this->max_inc,
+            this->def_inc);
+    this->te_current_time_ = create_new_spinbox(this->min_time, this->max_time,
+            this->def_time);
     this->te_count_ = create_new_spinbox(0, 1000, 0);
 
     /*--- Buttons ---*/
 
     this->b_start_stop = new QPushButton(this->ss_idle_text);
-    QObject::connect(this->b_start_stop, &QPushButton::clicked,
-                     this, &MainWidget::startStopClicked);
+    QObject::connect(this->b_start_stop, &QPushButton::clicked, this,
+            &MainWidget::startStopClicked);
 
     this->b_edit = new QPushButton(this->edit_idle_text);
-    QObject::connect(this->b_edit, &QPushButton::clicked,
-                     this, &MainWidget::editClicked);
+    QObject::connect(this->b_edit, &QPushButton::clicked, this,
+            &MainWidget::editClicked);
 
     QPushButton *b_reset = new QPushButton("Reset");
-    QObject::connect(b_reset, &QPushButton::clicked,
-                     this, &MainWidget::resetClicked);
+    QObject::connect(b_reset, &QPushButton::clicked, this,
+            &MainWidget::resetClicked);
 
     /*--- Save Color Info For Later ---*/
 
-    this->idle_button_color = this->b_start_stop->palette()
-            .color(QPalette::Window);
+    this->idle_button_color = this->b_start_stop->palette().color(
+            QPalette::Window);
     this->active_button_color = QColor(Qt::red);
 
     /*--- Timer ---*/
 
     this->timer.setSingleShot(true);
     this->setTimerValue();
-    QObject::connect(&this->timer, &QTimer::timeout,
-                     this, &MainWidget::timerDone);
+    QObject::connect(&this->timer, &QTimer::timeout, this,
+            &MainWidget::timerDone);
 
     /*--- Layout ---*/
 
@@ -131,14 +134,14 @@ bool MainWidget::timesWithinRange(int start, int increment)
  */
 void MainWidget::setTimes(int start, int increment)
 {
-    if(!this->timesWithinRange(start, increment)) {
+    if (!this->timesWithinRange(start, increment)) {
         std::stringstream msg;
         msg << "Start and increment values " << start << " and " << increment
-                << " do not fall within the appropriate ranges.";
+            << " do not fall within the appropriate ranges.";
         throw std::out_of_range(msg.str());
     }
-    qDebug() << "Setting new times (start: " << start
-            << "; increment: " << increment << ")";
+    qDebug() << "Setting new times (start: " << start << "; increment: "
+        << increment << ")";
     this->te_start_time_->setValue(start);
     this->te_increment_time_->setValue(increment);
 }
@@ -148,9 +151,9 @@ void MainWidget::setTimes(int start, int increment)
  */
 void MainWidget::setWithBrewItem(const BrewItem &item)
 {
-    this->te_name_->setText(item.getName().data());
+    this->te_name_->setText(item.getName());
     this->te_start_time_->setValue(item.getStart());
-    this->te_increment_time_->setValue(item.getInterval());
+    this->te_increment_time_->setValue(item.getIncrement());
 }
 
 /*
@@ -312,25 +315,32 @@ MainWindow::MainWindow()
 {
     this->setCentralWidget(&this->main_widget_);
 
+    BrewDatabase cacheDb;
+
     this->main_widget_.setWithBrewItem(default_item);
 
     /* Actions */
 
     QAction *act_quit = new QAction("&Quit", this);
-    QObject::connect(act_quit, &QAction::triggered,
-                     this, &QApplication::quit);
+    QObject::connect(act_quit, &QAction::triggered, this, &QApplication::quit);
+
+    QAction *act_load = new QAction("&Load Brew", this);
+    QObject::connect(act_load, &QAction::triggered, this,
+            &MainWindow::loadBrew);
 
     QAction *act_about = new QAction("&About", this);
-    QObject::connect(act_about, &QAction::triggered,
-                     this, &MainWindow::showAbout);
+    QObject::connect(act_about, &QAction::triggered, this,
+            &MainWindow::showAbout);
 
     QAction *act_about_qt = new QAction("About &Qt", this);
-    QObject::connect(act_about_qt, &QAction::triggered,
-                     this, &QApplication::aboutQt);
+    QObject::connect(act_about_qt, &QAction::triggered, this,
+            &QApplication::aboutQt);
 
     /* Menu Setup */
 
     QMenu *file_menu = this->menuBar()->addMenu("&File");
+    file_menu->addAction(act_load);
+    file_menu->addSeparator();
     file_menu->addAction(act_quit);
 
     QMenu *help_menu = this->menuBar()->addMenu("&Help");
@@ -343,12 +353,21 @@ MainWindow::MainWindow()
  */
 
 /*
+ * Open a dialog to load a brew.
+ */
+void MainWindow::loadBrew()
+{
+    LoadBrewDialog dialog;
+    dialog.exec();
+}
+
+/*
  * Display this program's About text.
  */
 void MainWindow::showAbout()
 {
     qDebug() << "About action pressed";
     QMessageBox::about(this, "About Tea-Time",
-             "Simple application to help manage the timing of tea infusions "
-             "and automatically increments the time of each infusion.");
+            "Simple application to help manage the timing of tea infusions "
+                    "and automatically increments the time of each infusion.");
 }

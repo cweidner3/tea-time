@@ -5,38 +5,18 @@
 #ifndef __BREWDATABASE_H__
 #define __BREWDATABASE_H__
 
+#include "TypeItem.h"
+#include "BrewItem.h"
+
 #include <filesystem>
 #include <string>
 #include <string_view>
 
-class BrewItem
-{
-    public:
-        BrewItem();
-        BrewItem(std::string_view &);
-        BrewItem(std::string_view &, int, int, int, int);
-        virtual ~BrewItem();
-
-    public:
-        void setName(std::string_view &);
-        void setStart(int);
-        void setInterval(int);
-        void setTemp(int);
-        void setMaxInfusions(int);
-
-        std::string_view getName() const;
-        int getStart() const;
-        int getInterval() const;
-        int getTemp() const;
-        int getMaxInfusions() const;
-
-    private:
-        std::string name = "Gong-Fu Black Tea";
-        int start = 15;
-        int interval = 5;
-        int temp = 90;
-        int max_infusions = 8;
-};
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlTableModel>
+#include <QList>
+#include <QVariant>
 
 class BrewDatabase
 {
@@ -44,8 +24,40 @@ class BrewDatabase
         BrewDatabase();
         virtual ~BrewDatabase();
 
+        /* Don't allow copying */
+        BrewDatabase(const BrewDatabase&) = delete;
+        BrewDatabase& operator=(const BrewDatabase&) = delete;
+
+        /* Do allow moving */
+        BrewDatabase(BrewDatabase&&);
+        BrewDatabase& operator=(BrewDatabase&&);
+
     public:
-        void loadFromFile(const std::filesystem::path &);
+        /* DB Initialization */
+        void openDatabase();
+        void closeDatabase();
+
+        /* Brew Table Access */
+        void addBrewToTable(BrewItem);
+        void addBrewsToTable(QList<BrewItem>);
+        void clearBrewsTable();
+        int getBrewsCount();
+        QList<BrewItem> getBrewsFromTable();
+
+        /* Cache table access */
+
+    public:
+        static void setDatabasePath(const std::filesystem::path&);
+
+    private:
+        void _maybeStartTransaction();
+        void _maybeStopTransaction();
+        void _addItemToTable(QSqlQuery &, BrewItem &);
+
+        void _createTables();
+
+    private:
+        bool useTransactions = false;
 };
 
 #endif/*__BREWDATABASE_H__*/

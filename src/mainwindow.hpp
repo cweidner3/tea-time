@@ -16,14 +16,15 @@
  *   https://doc.qt.io/qt-5/qtwidgets-mainwindows-application-example.html
  */
 
-class MainWidget: public QWidget {
+class MainWidget: public QWidget
+{
     public:
         MainWidget();
 
     public:
         bool timesWithinRange(int, int);
         void setTimes(int, int);
-        void setWithBrewItem(const BrewItem &);
+        void setWithBrewItem(const BrewItem&);
 
     private:
         /* Status Wrappers */
@@ -51,11 +52,11 @@ class MainWidget: public QWidget {
         const int max_inc = 120;
         const int def_inc = 5;
 
-        const char * const ss_idle_text = "Start";
-        const char * const ss_running_text = "Stop";
+        const char *const ss_idle_text = "Start";
+        const char *const ss_running_text = "Stop";
 
-        const char * const edit_idle_text = "Edit";
-        const char * const edit_editing_text = "Done";
+        const char *const edit_idle_text = "Edit";
+        const char *const edit_editing_text = "Done";
 
         QLineEdit *te_name_;
         QSpinBox *te_start_time_;
@@ -72,11 +73,13 @@ class MainWidget: public QWidget {
         QTimer timer;
 };
 
-class MainWindow: public QMainWindow {
+class MainWindow: public QMainWindow
+{
     public:
         MainWindow();
 
     public:
+        void loadBrew();
         void showAbout();
 
     private:
