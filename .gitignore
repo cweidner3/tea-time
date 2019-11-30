@@ -4,4 +4,9 @@
 # C / CMake Build objects
 build/
 
+# Eclipse Project Files
+.project
+.cproject
+.settings/
+
 *.tar.gz
