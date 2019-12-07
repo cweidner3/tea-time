@@ -1,3 +1,7 @@
+# Gerrit Review wrapper config
+.gitreview
+
+# Text file tmp files
 *~
 *.swp
 
