@@ -7,6 +7,7 @@
 
 #include "TypeItem.h"
 #include "BrewItem.h"
+#include "Exceptions.h"
 
 #include <filesystem>
 #include <string>
@@ -19,22 +20,7 @@
 #include <QList>
 #include <QVariant>
 
-class NoItemError: public std::exception
-{
-    public:
-        explicit NoItemError(const std::string& msg)
-                : msg(msg)
-        {
-        }
 
-        virtual const char * what() const noexcept
-        {
-            return this->msg.c_str();
-        }
-
-    private:
-        std::string msg;
-};
 
 class BrewDatabase
 {

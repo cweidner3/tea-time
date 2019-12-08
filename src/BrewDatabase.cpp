@@ -268,6 +268,7 @@ void BrewDatabase::clearBrewsTable()
  */
 int BrewDatabase::getBrewsCount()
 {
+    this->openDatabase();
     QSqlDatabase database = QSqlDatabase::database(_connection_name);
     QSqlQuery query(database);
     QString query_str = fmt::format(
@@ -283,8 +284,8 @@ int BrewDatabase::getBrewsCount()
 
 QList<BrewItem> BrewDatabase::getBrewsFromTable()
 {
+    this->openDatabase();
     QList<BrewItem> items;
-
     QSqlDatabase database = QSqlDatabase::database(_connection_name);
     QSqlQuery query(database);
     QString query_str = fmt::format(
@@ -304,6 +305,7 @@ QList<BrewItem> BrewDatabase::getBrewsFromTable()
 
 bool BrewDatabase::doesCacheItemExist()
 {
+    this->openDatabase();
     QSqlDatabase database = QSqlDatabase::database(_connection_name);
     QSqlQuery query(database);
     QString query_str = fmt::format(
@@ -320,6 +322,7 @@ bool BrewDatabase::doesCacheItemExist()
 
 BrewItem BrewDatabase::getCacheItem()
 {
+    this->openDatabase();
     bool item_exists = this->doesCacheItemExist();
     if (!item_exists) {
         throw NoItemError("Item doesn't exist in DB");
@@ -341,6 +344,7 @@ BrewItem BrewDatabase::getCacheItem()
 
 QList<BrewItem> BrewDatabase::getCacheTable()
 {
+    this->openDatabase();
     QSqlDatabase database = QSqlDatabase::database(_connection_name);
     QSqlQuery query(database);
     QString query_str = fmt::format(
@@ -361,6 +365,7 @@ QList<BrewItem> BrewDatabase::getCacheTable()
 
 void BrewDatabase::setCacheItem(BrewItem item)
 {
+    this->openDatabase();
     bool item_exists = this->doesCacheItemExist();
     this->_maybeStartTransaction();
     QSqlDatabase database = QSqlDatabase::database(_connection_name);

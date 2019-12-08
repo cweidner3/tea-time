@@ -316,8 +316,24 @@ MainWindow::MainWindow()
     this->setCentralWidget(&this->main_widget_);
 
     BrewDatabase cacheDb;
-
-    this->main_widget_.setWithBrewItem(default_item);
+    BrewItem cache_item;
+    try {
+        cache_item = cacheDb.getCacheItem();
+    } catch (NoItemError) {
+        cache_item = BrewItem::defaultBrewItem();
+        cacheDb.setCacheItem(cache_item);
+    } catch (ProjectError e) {
+        QMessageBox msgbox;
+        msgbox.setText("Failed to load cache data");
+        msgbox.setDetailedText(e.what());
+        msgbox.exec();
+    } catch (std::runtime_error e) {
+        QMessageBox msgbox;
+        msgbox.setText("Failed to load cache data");
+        msgbox.setDetailedText(e.what());
+        msgbox.exec();
+    }
+    this->main_widget_.setWithBrewItem(cache_item);
 
     /* Actions */
 
