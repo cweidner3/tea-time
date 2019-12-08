@@ -315,25 +315,8 @@ MainWindow::MainWindow()
 {
     this->setCentralWidget(&this->main_widget_);
 
-    BrewDatabase cacheDb;
-    BrewItem cache_item;
-    try {
-        cache_item = cacheDb.getCacheItem();
-    } catch (NoItemError) {
-        cache_item = BrewItem::defaultBrewItem();
-        cacheDb.setCacheItem(cache_item);
-    } catch (ProjectError e) {
-        QMessageBox msgbox;
-        msgbox.setText("Failed to load cache data");
-        msgbox.setDetailedText(e.what());
-        msgbox.exec();
-    } catch (std::runtime_error e) {
-        QMessageBox msgbox;
-        msgbox.setText("Failed to load cache data");
-        msgbox.setDetailedText(e.what());
-        msgbox.exec();
-    }
-    this->main_widget_.setWithBrewItem(cache_item);
+    this->_load_cache();
+    this->_maybe_populate_db_defaults();
 
     /* Actions */
 
@@ -386,4 +369,52 @@ void MainWindow::showAbout()
     QMessageBox::about(this, "About Tea-Time",
             "Simple application to help manage the timing of tea infusions "
                     "and automatically increments the time of each infusion.");
+}
+
+/*
+ * Public Methods
+ */
+
+void MainWindow::_load_cache()
+{
+    BrewDatabase cacheDb;
+    BrewItem cache_item;
+    try {
+        cache_item = cacheDb.getCacheItem();
+    } catch (NoItemError) {
+        cache_item = BrewItem::defaultBrewItem();
+        cacheDb.setCacheItem(cache_item);
+    } catch (ProjectError e) {
+        QMessageBox msgbox;
+        msgbox.setText("Failed to load cache data");
+        msgbox.setDetailedText(e.what());
+        msgbox.exec();
+    } catch (std::runtime_error e) {
+        QMessageBox msgbox;
+        msgbox.setText("Failed to load cache data");
+        msgbox.setDetailedText(e.what());
+        msgbox.exec();
+    }
+    this->main_widget_.setWithBrewItem(cache_item);
+}
+
+void MainWindow::_maybe_populate_db_defaults()
+{
+    BrewDatabase bdb;
+    // @formatter:off
+    const QList<BrewItem> default_brews = {
+        BrewItem("Default Pu-Erh", 15, 5, 95, 15),
+        BrewItem("Default Black", 15, 5, 90, 8),
+        BrewItem("Default Oolong", 20, 5, 95, 9),
+        BrewItem("Default Green", 15, 3, 80, 5),
+        BrewItem("Default White", 45, 10, 90, 5),
+    };
+    // @formatter:on
+    try {
+        bdb.addBrewsToTable(default_brews);
+    } catch (...) {
+        QMessageBox msgbox;
+        msgbox.setText("Failed to load default data");
+        msgbox.exec();
+    }
 }

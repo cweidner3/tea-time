@@ -83,6 +83,10 @@ class MainWindow: public QMainWindow
         void showAbout();
 
     private:
+        void _load_cache();
+        void _maybe_populate_db_defaults();
+
+    private:
         MainWidget main_widget_;
 };
 

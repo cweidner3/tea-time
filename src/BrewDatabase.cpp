@@ -21,15 +21,6 @@ static fs::path _database_file = std::getenv("HOME")
     / fs::path(".cache/tea-time/brews.db");
 static const QString _driver("QSQLITE");
 
-// @formatter:off
-static const QList<BrewItem> _default_brews = {
-    BrewItem("Default Pu-Erh", 15, 5, 95, 15),
-    BrewItem("Default Black", 15, 5, 90, 8),
-    BrewItem("Default Oolong", 20, 5, 95, 9),
-    BrewItem("Default Green", 15, 3, 80, 5),
-    BrewItem("Default White", 45, 10, 90, 5),
-};
-// @formatter:on
 const std::string _table_name_brews = "Brews";
 const std::string _table_name_cache = "Cache";
 const std::string _table_name_types = "Types";
