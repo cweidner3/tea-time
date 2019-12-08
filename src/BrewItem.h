@@ -25,7 +25,11 @@ class BrewItem
         friend QDebug & operator<< (QDebug &, BrewItem &);
 
     public:
-        void setName(QString &name)
+        void setId(int id)
+        {
+            this->id = id;
+        }
+        void setName(QString name)
         {
             this->name = name;
         }
@@ -46,6 +50,10 @@ class BrewItem
             this->infusions = max_infusions;
         }
 
+        int getId() const
+        {
+            return this->id;
+        }
         QString getName() const
         {
             return this->name;
@@ -80,7 +88,7 @@ class BrewItem
         static BrewItem defaultBrewItem();
 
     private:
-        const int default_int = 9999;
+        static const int default_int = 9999;
 
         QString name;
         int start = default_int;

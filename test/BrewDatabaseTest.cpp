@@ -105,6 +105,25 @@ BOOST_AUTO_TEST_CASE(TestReadBrews, * but::depends_on("TestAddManyBrews"))
     }
 }
 
+BOOST_AUTO_TEST_CASE(TestCacheItem, * but::depends_on("TestOpenDatabase"))
+{
+    BrewItem item;
+    BrewDatabase bdb;
+    qDebug() << ">> Checking Cache Item";
+    BOOST_REQUIRE_THROW(bdb.getCacheItem(), NoItemError);
+    BOOST_REQUIRE_NO_THROW(bdb.setCacheItem(item));
+    BOOST_REQUIRE_NO_THROW(item = bdb.getCacheItem());
+    BOOST_TEST(item.getId() == 1);
+    qDebug() << ">>>> Cache Item Name: " << item.getName();
+    item.setId(15);
+    item.setName("A different name");
+    BOOST_REQUIRE_NO_THROW(bdb.setCacheItem(item));
+    BOOST_REQUIRE_NO_THROW(item = bdb.getCacheItem());
+    BOOST_TEST(item.getId() == 1);
+    qDebug() << ">>>> Cache Item Name: " << item.getName();
+}
+
+
 /*----------------------------------------------------------------------------*/
 /*
  * Test Setup

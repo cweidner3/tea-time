@@ -11,12 +11,30 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <exception>
 
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlTableModel>
 #include <QList>
 #include <QVariant>
+
+class NoItemError: public std::exception
+{
+    public:
+        explicit NoItemError(const std::string& msg)
+                : msg(msg)
+        {
+        }
+
+        virtual const char * what() const noexcept
+        {
+            return this->msg.c_str();
+        }
+
+    private:
+        std::string msg;
+};
 
 class BrewDatabase
 {
@@ -45,6 +63,10 @@ class BrewDatabase
         QList<BrewItem> getBrewsFromTable();
 
         /* Cache table access */
+        bool doesCacheItemExist();
+        BrewItem getCacheItem();
+        QList<BrewItem> getCacheTable();
+        void setCacheItem(BrewItem);
 
     public:
         static void setDatabasePath(const std::filesystem::path&);
@@ -52,7 +74,7 @@ class BrewDatabase
     private:
         void _maybeStartTransaction();
         void _maybeStopTransaction();
-        void _addItemToTable(QSqlQuery &, BrewItem &);
+        void _addItemToTable(QSqlQuery&, BrewItem&);
 
         void _createTables();
 

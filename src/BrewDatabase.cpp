@@ -40,6 +40,31 @@ static bool _connection_open = false;
 /*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/
 
+static QString create_update_args(QStringList fields, QList<QVariant> data)
+{
+    QStringList args_list;
+    if (fields.size() != data.size()) {
+        throw std::runtime_error("Params are not the same length");
+    }
+    for (int i=0; i<fields.size(); i++) {
+        QString data_item;
+        if (data.at(i).type() == QVariant::String) {
+            data_item = "'" + data.at(i).toString() + "'";
+        }
+        else if (data.at(i).type() == QVariant::Int) {
+            data_item = data.at(i).toString();
+        }
+        else {
+            throw std::runtime_error("Unknown type variant type");
+        }
+        args_list.append(fields.at(i) + " = " + data_item);
+    }
+    return args_list.join(", ");
+}
+
+/*----------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
+
 BrewDatabase::BrewDatabase()
 {
 }
@@ -275,6 +300,91 @@ QList<BrewItem> BrewDatabase::getBrewsFromTable()
         items.append(new_item);
     }
     return items;
+}
+
+bool BrewDatabase::doesCacheItemExist()
+{
+    QSqlDatabase database = QSqlDatabase::database(_connection_name);
+    QSqlQuery query(database);
+    QString query_str = fmt::format(
+            "SELECT COUNT(id) FROM {} WHERE id=1;",
+            _table_name_cache).data();
+    if (!query.exec(query_str)) {
+        throw std::runtime_error(fmt::format("Failed to execute: {}: {}",
+                query_str, query.lastError().text()));
+    }
+    query.next();
+    int exists = query.value(0).toInt();
+    return exists != 0;
+}
+
+BrewItem BrewDatabase::getCacheItem()
+{
+    bool item_exists = this->doesCacheItemExist();
+    if (!item_exists) {
+        throw NoItemError("Item doesn't exist in DB");
+    }
+    QSqlDatabase database = QSqlDatabase::database(_connection_name);
+    QSqlQuery query(database);
+    QString query_str = fmt::format(
+            "SELECT * FROM {} WHERE id=1;",
+            _table_name_cache).data();
+    if (!query.exec(query_str)) {
+        throw std::runtime_error(fmt::format("Failed to execute: {}: {}",
+                query_str, query.lastError().text()));
+    }
+    query.next();
+    BrewItem new_item;
+    new_item.setRecord(query.record());
+    return new_item;
+}
+
+QList<BrewItem> BrewDatabase::getCacheTable()
+{
+    QSqlDatabase database = QSqlDatabase::database(_connection_name);
+    QSqlQuery query(database);
+    QString query_str = fmt::format(
+            "SELECT * FROM {};",
+            _table_name_cache).data();
+    if (!query.exec(query_str)) {
+        throw std::runtime_error(fmt::format("Failed to execute: {}: {}",
+                query_str, query.lastError().text()));
+    }
+    QList<BrewItem> items;
+    while(query.next()) {
+        BrewItem new_item;
+        new_item.setRecord(query.record());
+        items.append(new_item);
+    }
+    return items;
+}
+
+void BrewDatabase::setCacheItem(BrewItem item)
+{
+    bool item_exists = this->doesCacheItemExist();
+    this->_maybeStartTransaction();
+    QSqlDatabase database = QSqlDatabase::database(_connection_name);
+    QSqlQuery query(database);
+    QString query_str;
+    item.setId(1);
+    if (item_exists) {
+        query_str = fmt::format(
+                "UPDATE {} SET {} WHERE id=1;",
+                _table_name_cache,
+                create_update_args(item.getTableFieldNames(true),
+                        item.getTableRowItems(true))).data();
+    }
+    else {
+        query_str = fmt::format(
+                "INSERT INTO {} ({}) VALUES ({});",
+                _table_name_cache, item.getTableFields(true),
+                item.getTableRow(true)).data();
+    }
+    if (!query.exec(query_str)) {
+        throw std::runtime_error(fmt::format("Failed to execute: {}: {}",
+                query_str, query.lastError().text()));
+    }
+    this->_maybeStopTransaction();
 }
 
 /*
