@@ -13,4 +13,7 @@ build/
 .cproject
 .settings/
 
+# Root compile commands for tools such as YCM
+/compile_commands.json
+
 *.tar.gz

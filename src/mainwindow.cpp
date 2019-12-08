@@ -381,15 +381,15 @@ void MainWindow::_load_cache()
     BrewItem cache_item;
     try {
         cache_item = cacheDb.getCacheItem();
-    } catch (NoItemError) {
+    } catch (NoItemError &) {
         cache_item = BrewItem::defaultBrewItem();
         cacheDb.setCacheItem(cache_item);
-    } catch (ProjectError e) {
+    } catch (ProjectError &e) {
         QMessageBox msgbox;
         msgbox.setText("Failed to load cache data");
         msgbox.setDetailedText(e.what());
         msgbox.exec();
-    } catch (std::runtime_error e) {
+    } catch (std::runtime_error &e) {
         QMessageBox msgbox;
         msgbox.setText("Failed to load cache data");
         msgbox.setDetailedText(e.what());
@@ -411,7 +411,9 @@ void MainWindow::_maybe_populate_db_defaults()
     };
     // @formatter:on
     try {
-        bdb.addBrewsToTable(default_brews);
+        if(bdb.getBrewsCount() == 0) {
+            bdb.addBrewsToTable(default_brews);
+        }
     } catch (...) {
         QMessageBox msgbox;
         msgbox.setText("Failed to load default data");
